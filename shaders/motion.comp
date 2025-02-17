@@ -1,0 +1,57 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0) uniform sampler2D previousFrame;
+layout(binding = 1) uniform sampler2D currentFrame;
+layout(binding = 2, rgba32f) uniform image2D motionVectors;
+
+layout(push_constant) uniform PushConstants {
+    ivec2 imageSize;
+    int blockSize;
+    float searchRadius;
+} pc;
+
+// Motion estimation using block matching
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    if (pixel.x >= pc.imageSize.x || pixel.y >= pc.imageSize.y) {
+        return;
+    }
+
+    ivec2 blockStart = pixel - ivec2(pc.blockSize / 2);
+    vec2 bestMotion = vec2(0.0);
+    float minDiff = 1e10;
+
+    // Search for best matching block
+    for (float dy = -pc.searchRadius; dy <= pc.searchRadius; dy += 1.0) {
+        for (float dx = -pc.searchRadius; dx <= pc.searchRadius; dx += 1.0) {
+            vec2 motion = vec2(dx, dy);
+            float diff = 0.0;
+
+            // Compare blocks
+            for (int y = 0; y < pc.blockSize; y++) {
+                for (int x = 0; x < pc.blockSize; x++) {
+                    ivec2 currentPos = blockStart + ivec2(x, y);
+                    if (any(lessThan(currentPos, ivec2(0))) || 
+                        any(greaterThanEqual(currentPos, pc.imageSize))) {
+                        continue;
+                    }
+
+                    vec4 currentColor = texelFetch(currentFrame, currentPos, 0);
+                    vec4 previousColor = texelFetch(previousFrame, 
+                        currentPos + ivec2(motion), 0);
+                    
+                    diff += distance(currentColor, previousColor);
+                }
+            }
+
+            if (diff < minDiff) {
+                minDiff = diff;
+                bestMotion = motion;
+            }
+        }
+    }
+
+    imageStore(motionVectors, pixel, vec4(bestMotion, 0.0, 1.0));
+}

@@ -1,0 +1,40 @@
+#version 450
+
+layout(local_size_x = 16, local_size_y = 16) in;
+
+layout(binding = 0) uniform sampler2D previousFrame;
+layout(binding = 1) uniform sampler2D currentFrame;
+layout(binding = 2) uniform sampler2D motionVectors;
+layout(binding = 3, rgba8) uniform image2D outputFrame;
+
+layout(push_constant) uniform PushConstants {
+    float interpolationFactor;
+    ivec2 imageSize;
+} pc;
+
+vec4 sampleWithMotion(sampler2D frame, vec2 uv, vec2 motion, float scale) {
+    vec2 sampleUv = uv + motion * scale;
+    if (any(lessThan(sampleUv, vec2(0.0))) || 
+        any(greaterThan(sampleUv, vec2(1.0)))) {
+        return vec4(0.0);
+    }
+    return texture(frame, sampleUv);
+}
+
+void main() {
+    ivec2 pixel = ivec2(gl_GlobalInvocationID.xy);
+    if (pixel.x >= pc.imageSize.x || pixel.y >= pc.imageSize.y) {
+        return;
+    }
+
+    vec2 uv = (vec2(pixel) + 0.5) / vec2(pc.imageSize);
+    vec2 motion = texture(motionVectors, uv).xy;
+
+    // Sample frames with motion vectors
+    vec4 prevColor = sampleWithMotion(previousFrame, uv, motion, -pc.interpolationFactor);
+    vec4 currColor = sampleWithMotion(currentFrame, uv, motion, 1.0 - pc.interpolationFactor);
+
+    // Blend frames
+    vec4 finalColor = mix(prevColor, currColor, pc.interpolationFactor);
+    imageStore(outputFrame, pixel, finalColor);
+}
