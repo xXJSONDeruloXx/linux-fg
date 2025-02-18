@@ -9,7 +9,8 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(Vulkan REQUIRED)
 find_package(X11 REQUIRED)
 find_package(PkgConfig REQUIRED)
-pkg_check_modules(XCB REQUIRED xcb xcb-shm)
+find_package(Wayland REQUIRED)
+pkg_check_modules(XCB REQUIRED xcb xcb-shm xcb-composite xcb-xfixes)
 find_package(SDL2 REQUIRED)
 
 # Shader compilation
@@ -61,8 +62,10 @@ target_link_libraries(lossless-scaling PRIVATE
     ${X11_LIBRARIES}
     ${XCB_LIBRARIES}
     ${SDL2_LIBRARIES}
+    ${WAYLAND_LIBRARIES}
     xcb-shm
     X11-xcb
+    Xcomposite
 )
 
 # Installation
