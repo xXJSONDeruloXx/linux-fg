@@ -74,4 +74,8 @@ private:
     float m_currentFps = 0.0f;
 
     SDL_Window* m_window = nullptr;
+
+    // New members
+    std::queue<std::chrono::steady_clock::time_point> m_parentFrameTimings;
+    float m_parentFps = 0.0f;
 };

@@ -438,6 +438,19 @@ bool Scaler::ProcessFrame() {
         m_currentFps = 1000.0f * (m_frameTimings.size() - 1) / duration;
     }
 
+    // Update parent window FPS
+    m_parentFrameTimings.push(currentTime);
+
+    while (m_parentFrameTimings.size() > 60) {
+        m_parentFrameTimings.pop();
+    }
+
+    if (m_parentFrameTimings.size() > 1) {
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            m_parentFrameTimings.back() - m_parentFrameTimings.front()).count();
+        m_parentFps = 1000.0f * (m_parentFrameTimings.size() - 1) / duration;
+    }
+
     if (m_currentFrame.image == VK_NULL_HANDLE) {
         LOG_INFO("Creating current frame buffer");
         if (!FrameManager::Get().CreateFrame(m_currentFrame, m_config.inputWidth, m_config.inputHeight)) {
@@ -583,7 +596,8 @@ bool Scaler::ProcessFrame() {
     // Prepare stats text
     std::stringstream stats;
     stats << std::fixed << std::setprecision(1)
-          << "FPS: " << m_currentFps << "\n"
+          << "Parent FPS: " << m_parentFps << "\n"
+          << "Output FPS: " << m_currentFps << "\n"
           << "Input: " << m_config.inputWidth << "x" << m_config.inputHeight << "\n"
           << "Output: " << m_config.outputWidth << "x" << m_config.outputHeight;
 
