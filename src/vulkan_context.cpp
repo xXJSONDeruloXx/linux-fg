@@ -309,7 +309,7 @@ bool VulkanContext::CreateSwapchain() {
     createInfo.minImageCount = 2;
     createInfo.imageFormat = m_swapchainFormat;
     createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
-    createInfo.imageExtent = {width, height};
+    createInfo.imageExtent = {m_width, m_height}; // Use member variables
     createInfo.imageArrayLayers = 1;
     createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
     createInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
@@ -318,8 +318,20 @@ bool VulkanContext::CreateSwapchain() {
     createInfo.clipped = VK_TRUE;
 
     if (vkCreateSwapchainKHR(m_device, &createInfo, nullptr, &m_swapchain) != VK_SUCCESS) {
+        LOG_ERROR("Failed to create swapchain");
         return false;
     }
 
+    // Get swapchain images
+    uint32_t imageCount;
+    vkGetSwapchainImagesKHR(m_device, m_swapchain, &imageCount, nullptr);
+    m_swapchainImages.resize(imageCount);
+    vkGetSwapchainImagesKHR(m_device, m_swapchain, &imageCount, m_swapchainImages.data());
+
     return true;
 }
+
+private:
+    bool CreateSwapchain();
+    VkInstance GetInstance() const { return m_instance; }
+    std::vector<VkImage>& GetSwapchainImages() { return m_swapchainImages; }

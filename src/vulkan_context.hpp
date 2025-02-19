@@ -60,6 +60,9 @@ private:
     std::vector<VkImageView> m_swapchainImageViews;
     VkFormat m_swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
+    uint32_t m_width = 0;
+    uint32_t m_height = 0;
+
     const std::vector<const char*> m_validationLayers = {
         "VK_LAYER_KHRONOS_validation"
     };

@@ -576,7 +576,8 @@ bool Scaler::ProcessFrame() {
     presentInfo.waitSemaphoreCount = 1;
     presentInfo.pWaitSemaphores = &m_renderFinishedSemaphore;
     presentInfo.swapchainCount = 1;
-    presentInfo.pSwapchains = &VulkanContext::Get().GetSwapchain();
+    VkSwapchainKHR swapchain = VulkanContext::Get().GetSwapchain();
+    presentInfo.pSwapchains = &swapchain;
     presentInfo.pImageIndices = &imageIndex;
 
     result = vkQueuePresentKHR(VulkanContext::Get().GetPresentQueue(), &presentInfo);

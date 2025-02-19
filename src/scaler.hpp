@@ -3,6 +3,7 @@
 #include <queue>
 #include <fstream>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_vulkan.h> // Add this include
 #include "frame_manager.hpp"
 #include "window_capture.hpp"
 
