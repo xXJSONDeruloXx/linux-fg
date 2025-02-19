@@ -35,6 +35,8 @@ public:
     bool ProcessFrame();
     bool IsInitialized() const { return m_initialized; }
 
+    bool HandleResize(uint32_t width, uint32_t height);
+
 private:
     Scaler() = default;
     ~Scaler() { Cleanup(); }
@@ -74,4 +76,23 @@ private:
     float m_currentFps = 0.0f;
 
     SDL_Window* m_window = nullptr;
+
+    // Add semaphores and fences for swapchain sync
+    VkSemaphore m_imageAvailableSemaphore = VK_NULL_HANDLE;
+    VkSemaphore m_renderFinishedSemaphore = VK_NULL_HANDLE;
+    VkFence m_inFlightFence = VK_NULL_HANDLE;
 };
+
+bool Scaler::HandleResize(uint32_t width, uint32_t height) {
+    auto& vulkan = VulkanContext::Get();
+    vkDeviceWaitIdle(vulkan.GetDevice());
+    
+    if (!vulkan.RecreateSwapchain(width, height)) {
+        LOG_ERROR("Failed to recreate swapchain");
+        return false;
+    }
+    
+    m_config.outputWidth = width;
+    m_config.outputHeight = height;
+    return true;
+}

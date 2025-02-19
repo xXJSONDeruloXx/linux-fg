@@ -24,13 +24,22 @@ bool VulkanContext::Initialize() {
 
 void VulkanContext::Cleanup() {
     if (m_device) {
+        vkDeviceWaitIdle(m_device);
+        
+        CleanupSwapchain();
+        
+        if (m_surface) {
+            vkDestroySurfaceKHR(m_instance, m_surface, nullptr);
+            m_surface = VK_NULL_HANDLE;
+        }
+
         vkDestroyDevice(m_device, nullptr);
         m_device = VK_NULL_HANDLE;
     }
-    
+
     if (m_instance) {
         vkDestroyInstance(m_instance, nullptr);
-        m_instance = VK_NULL_HANDLE;
+        m_instance = VK_NULL_HANDLE; 
     }
 }
 
@@ -54,7 +63,8 @@ bool VulkanContext::CreateInstance() {
 
     std::vector<const char*> extensions = {
         VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_XCB_SURFACE_EXTENSION_NAME
+        VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
 
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
@@ -125,6 +135,13 @@ bool VulkanContext::CreateLogicalDevice() {
     if (!found) {
         LOG_ERROR("No compute queue family found");
         return false;
+    }
+
+    // Need to find a queue that supports both compute and present
+    VkBool32 presentSupport = false;
+    vkGetPhysicalDeviceSurfaceSupportKHR(m_physicalDevice, m_computeQueueFamily, m_surface, &presentSupport);
+    if (queueFamilies[m_computeQueueFamily].queueCount > 0 && presentSupport) {
+        m_presentQueueFamily = m_computeQueueFamily;
     }
 
     float queuePriority = 1.0f;
@@ -293,4 +310,13 @@ bool VulkanContext::CheckValidationLayerSupport() {
     }
 
     return true;
+}
+
+bool VulkanContext::CreateSwapchain(uint32_t width, uint32_t height) {
+    uint32_t formatCount;
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &formatCount, nullptr);
+    m_surfaceFormats.resize(formatCount);
+    vkGetPhysicalDeviceSurfaceFormatsKHR(m_physicalDevice, m_surface, &formatCount, m_surfaceFormats.data());
+    
+    // Rest of swapchain creation...
 }

@@ -119,6 +119,17 @@ int main(int argc, char* argv[]) {
         while (true) {
             frameStart = SDL_GetTicks();
             
+            // Handle SDL events
+            SDL_Event event;
+            while (SDL_PollEvent(&event)) {
+                if (event.type == SDL_WINDOWEVENT && 
+                    event.window.event == SDL_WINDOWEVENT_RESIZED) {
+                    if (!Scaler::Get().HandleResize(event.window.data1, event.window.data2)) {
+                        break;
+                    }
+                }
+            }
+
             if (!Scaler::Get().ProcessFrame()) {
                 LOG_INFO("ProcessFrame returned false, cleaning up...");
                 break;  // This will exit the loop cleanly

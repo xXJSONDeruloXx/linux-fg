@@ -55,6 +55,21 @@ bool Scaler::Initialize(const ScalerConfig& config) {
         return false;
     }
 
+    // After creating command pool
+    VkSemaphoreCreateInfo semaphoreInfo{};
+    semaphoreInfo.sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO;
+    
+    VkFenceCreateInfo fenceInfo{};
+    fenceInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
+    fenceInfo.flags = VK_FENCE_CREATE_SIGNALED_BIT;
+
+    auto& vulkan = VulkanContext::Get();
+    if (vkCreateSemaphore(vulkan.GetDevice(), &semaphoreInfo, nullptr, &m_imageAvailableSemaphore) != VK_SUCCESS ||
+        vkCreateSemaphore(vulkan.GetDevice(), &semaphoreInfo, nullptr, &m_renderFinishedSemaphore) != VK_SUCCESS ||
+        vkCreateFence(vulkan.GetDevice(), &fenceInfo, nullptr, &m_inFlightFence) != VK_SUCCESS) {
+        return false;
+    }
+
     if (!LoadShaders()) {
         LOG_ERROR("Failed to load shaders");
         return false;
@@ -72,6 +87,16 @@ bool Scaler::Initialize(const ScalerConfig& config) {
 
     if (!CreateFrameResources()) {
         LOG_ERROR("Failed to create frame resources");
+        return false;
+    }
+
+    if (!vulkan.CreateSurface(m_window)) {
+        LOG_ERROR("Failed to create surface");
+        return false;
+    }
+    
+    if (!vulkan.CreateSwapchain(config.outputWidth, config.outputHeight)) {
+        LOG_ERROR("Failed to create swapchain");
         return false;
     }
 
@@ -395,262 +420,85 @@ bool Scaler::ScaleFrame(const Frame& input, Frame& output) {
 }
 
 bool Scaler::ProcessFrame() {
-    if (!m_initialized) {
-        LOG_ERROR("Scaler not initialized");
-        return false;
-    }
-
-    // Handle SDL events properly
-    SDL_Event event;
-    while (SDL_PollEvent(&event)) {
-        switch (event.type) {
-            case SDL_QUIT:
-                LOG_INFO("Received SDL_QUIT event");
-                return false;
-                
-            case SDL_WINDOWEVENT:
-                if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
-                    LOG_INFO("Received window close event");
-                    return false;
-                }
-                break;
-        }
-    }
-
-    static int frameCount = 0;
-    if (frameCount++ % 60 == 0) {  // Log every 60 frames
-        LOG_INFO("Current FPS: ", m_currentFps);
-        LOG_INFO("Input Resolution: ", m_config.inputWidth, "x", m_config.inputHeight);
-        LOG_INFO("Target Resolution: ", m_config.outputWidth, "x", m_config.outputHeight);
-        LOG_INFO("Interpolation: ", m_config.enableInterpolation ? "Enabled" : "Disabled");
-    }
-
-    auto currentTime = std::chrono::steady_clock::now();
-    m_frameTimings.push(currentTime);
-
-    while (m_frameTimings.size() > 60) {
-        m_frameTimings.pop();
-    }
-
-    if (m_frameTimings.size() > 1) {
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-            m_frameTimings.back() - m_frameTimings.front()).count();
-        m_currentFps = 1000.0f * (m_frameTimings.size() - 1) / duration;
-    }
-
-    if (m_currentFrame.image == VK_NULL_HANDLE) {
-        LOG_INFO("Creating current frame buffer");
-        if (!FrameManager::Get().CreateFrame(m_currentFrame, m_config.inputWidth, m_config.inputHeight)) {
-            LOG_ERROR("Failed to create current frame");
-            return false;
-        }
-    }
-
-    if (m_config.enableInterpolation && m_previousFrame.image == VK_NULL_HANDLE) {
-        LOG_INFO("Creating previous frame buffer");
-        if (!FrameManager::Get().CreateFrame(m_previousFrame, m_config.inputWidth, m_config.inputHeight)) {
-            LOG_ERROR("Failed to create previous frame");
-            return false;
-        }
-    }
-
-    if (m_outputFrame.image == VK_NULL_HANDLE) {
-        LOG_INFO("Creating output frame buffer");
-        if (!FrameManager::Get().CreateFrame(m_outputFrame, m_config.outputWidth, m_config.outputHeight)) {
-            LOG_ERROR("Failed to create output frame");
-            return false;
-        }
-    }
-
-    LOG_INFO("Attempting to capture frame...");
-    if (!WindowCapture::Get().CaptureFrame(m_currentFrame)) {
-        LOG_ERROR("Failed to capture frame");
-        return false;
-    }
-    LOG_INFO("Frame captured successfully");
-
-    LOG_INFO("Scaling frame...");
-    if (!ScaleFrame(m_currentFrame, m_outputFrame)) {
-        LOG_ERROR("Failed to scale frame");
-        return false;
-    }
-    LOG_INFO("Frame scaled successfully");
-
-    // Create staging buffer for reading back the image data
-    VkBuffer stagingBuffer;
-    VkDeviceMemory stagingMemory;
-    VkDeviceSize bufferSize = m_config.outputWidth * m_config.outputHeight * 4;
-
-    if (!FrameManager::Get().CreateStagingBuffer(stagingBuffer, stagingMemory, bufferSize)) {
-        LOG_ERROR("Failed to create staging buffer");
-        return false;
-    }
-
-    // Copy image data to staging buffer
-    VkCommandBuffer commandBuffer = FrameManager::Get().BeginSingleTimeCommands();
+    auto& vulkan = VulkanContext::Get();
     
+    vkWaitForFences(vulkan.GetDevice(), 1, &m_inFlightFence, VK_TRUE, UINT64_MAX);
+    vkResetFences(vulkan.GetDevice(), 1, &m_inFlightFence);
+
+    uint32_t imageIndex;
+    VkResult result = vkAcquireNextImageKHR(vulkan.GetDevice(), vulkan.GetSwapchain(), 
+        UINT64_MAX, m_imageAvailableSemaphore, VK_NULL_HANDLE, &imageIndex);
+
+    if (result == VK_ERROR_OUT_OF_DATE_KHR) {
+        // Handle window resize
+        return RecreateSwapchain();
+    }
+
+    // Submit work
+    VkSubmitInfo submitInfo{};
+    submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+    
+    VkSemaphore waitSemaphores[] = {m_imageAvailableSemaphore};
+    VkPipelineStageFlags waitStages[] = {VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT};
+    submitInfo.waitSemaphoreCount = 1;
+    submitInfo.pWaitSemaphores = waitSemaphores;
+    submitInfo.pWaitDstStageMask = waitStages;
+    submitInfo.commandBufferCount = 1;
+    submitInfo.pCommandBuffers = &m_commandBuffer;
+    
+    VkSemaphore signalSemaphores[] = {m_renderFinishedSemaphore};
+    submitInfo.signalSemaphoreCount = 1;
+    submitInfo.pSignalSemaphores = signalSemaphores;
+
+    if (vkQueueSubmit(vulkan.GetComputeQueue(), 1, &submitInfo, m_inFlightFence) != VK_SUCCESS) {
+        return false;
+    }
+
+    // Add transition to PRESENT_SRC_KHR
     VkImageMemoryBarrier barrier{};
-    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
-    barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
-    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
-    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
-    barrier.image = m_outputFrame.image;
-    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    barrier.subresourceRange.baseMipLevel = 0;
-    barrier.subresourceRange.levelCount = 1;
-    barrier.subresourceRange.baseArrayLayer = 0;
-    barrier.subresourceRange.layerCount = 1;
-    barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
-    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
-
+    barrier.oldLayout = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+    // ... setup barrier ...
+    
     vkCmdPipelineBarrier(commandBuffer,
-        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
         VK_PIPELINE_STAGE_TRANSFER_BIT,
-        0,
-        0, nullptr,
-        0, nullptr,
-        1, &barrier);
+        VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT,
+        0, 0, nullptr, 0, nullptr, 1, &barrier);
 
-    VkBufferImageCopy region{};
-    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
-    region.imageSubresource.layerCount = 1;
-    region.imageExtent.width = m_config.outputWidth;
-    region.imageExtent.height = m_config.outputHeight;
-    region.imageExtent.depth = 1;
+    // Present
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = signalSemaphores;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &vulkan.GetSwapchain();
+    presentInfo.pImageIndices = &imageIndex;
 
-    vkCmdCopyImageToBuffer(commandBuffer,
-        m_outputFrame.image,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        stagingBuffer,
-        1,
-        &region);
-
-    FrameManager::Get().EndSingleTimeCommands(commandBuffer);
-
-    // Ensure compute operations are complete
-    vkQueueWaitIdle(VulkanContext::Get().GetComputeQueue());
-
-    // Map the staging buffer and create SDL surface
-    void* data;
-    vkMapMemory(VulkanContext::Get().GetDevice(), stagingMemory, 0, bufferSize, 0, &data);
-
-    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(
-        data,
-        m_config.outputWidth,
-        m_config.outputHeight,
-        32,
-        m_config.outputWidth * 4,
-        0x00FF0000,  // B mask
-        0x0000FF00,  // G mask
-        0x000000FF,  // R mask
-        0xFF000000   // A mask
-    );
-
-    if (!surface) {
-        LOG_ERROR("Failed to create SDL surface: ", SDL_GetError());
-        vkUnmapMemory(VulkanContext::Get().GetDevice(), stagingMemory);
-        FrameManager::Get().DestroyStagingBuffer(stagingBuffer, stagingMemory);
-        return false;
+    result = vkQueuePresentKHR(vulkan.GetPresentQueue(), &presentInfo);
+    if (result == VK_ERROR_OUT_OF_DATE_KHR || result == VK_SUBOPTIMAL_KHR) {
+        return RecreateSwapchain();
     }
-
-    // Get the window surface
-    SDL_Surface* windowSurface = SDL_GetWindowSurface(m_window);
-    if (!windowSurface) {
-        LOG_ERROR("Failed to get window surface: ", SDL_GetError());
-        SDL_FreeSurface(surface);
-        vkUnmapMemory(VulkanContext::Get().GetDevice(), stagingMemory);
-        FrameManager::Get().DestroyStagingBuffer(stagingBuffer, stagingMemory);
-        return false;
-    }
-
-    if (SDL_MUSTLOCK(windowSurface)) {
-        if (SDL_LockSurface(windowSurface) < 0) {
-            LOG_ERROR("Failed to lock window surface: ", SDL_GetError());
-            return false;
-        }
-    }
-
-    // Blit the surface to the window surface
-    if (SDL_BlitSurface(surface, NULL, windowSurface, NULL) != 0) {
-        LOG_ERROR("Failed to blit surface: ", SDL_GetError());
-        SDL_FreeSurface(surface);
-        vkUnmapMemory(VulkanContext::Get().GetDevice(), stagingMemory);
-        FrameManager::Get().DestroyStagingBuffer(stagingBuffer, stagingMemory);
-        return false;
-    }
-
-    // Prepare stats text
-    std::stringstream stats;
-    stats << std::fixed << std::setprecision(1)
-          << "FPS: " << m_currentFps << "\n"
-          << "Input: " << m_config.inputWidth << "x" << m_config.inputHeight << "\n"
-          << "Output: " << m_config.outputWidth << "x" << m_config.outputHeight;
-
-    // Render stats text
-    if (m_statsSurface) {
-        SDL_FreeSurface(m_statsSurface);
-    }
-    m_statsSurface = TTF_RenderText_Blended_Wrapped(m_font, stats.str().c_str(), 
-                                                   m_textColor, m_config.outputWidth);
-
-    if (m_statsSurface) {
-        SDL_Rect dstRect = {10, 10, m_statsSurface->w, m_statsSurface->h};
-        SDL_BlitSurface(m_statsSurface, NULL, windowSurface, &dstRect);
-    }
-
-    if (SDL_MUSTLOCK(windowSurface)) {
-        SDL_UnlockSurface(windowSurface);
-    }
-
-    // Update the window with the new content
-    if (SDL_UpdateWindowSurface(m_window) != 0) {
-        LOG_ERROR("Failed to update window surface: ", SDL_GetError());
-    }
-
-    SDL_FreeSurface(surface);
-
-    vkUnmapMemory(VulkanContext::Get().GetDevice(), stagingMemory);
-    FrameManager::Get().DestroyStagingBuffer(stagingBuffer, stagingMemory);
-
-    if (m_config.enableInterpolation) {
-        if (!FrameManager::Get().CopyFrameData(m_currentFrame, m_previousFrame)) {
-            LOG_ERROR("Failed to store frame for interpolation");
-            return false;
-        }
-    }
-
-    return true;
+    return result == VK_SUCCESS;
 }
 
 void Scaler::Cleanup() {
-    // Get Vulkan context once
     auto& vulkan = VulkanContext::Get();
-    if (vulkan.GetDevice()) {
-        vkDeviceWaitIdle(vulkan.GetDevice());
+    auto device = vulkan.GetDevice();
+
+    if (m_imageAvailableSemaphore != VK_NULL_HANDLE) {
+        vkDestroySemaphore(device, m_imageAvailableSemaphore, nullptr);
+        m_imageAvailableSemaphore = VK_NULL_HANDLE;
     }
 
-    // Cleanup TTF/SDL resources
-    if (m_statsSurface) {
-        SDL_FreeSurface(m_statsSurface);
-        m_statsSurface = nullptr;
+    if (m_renderFinishedSemaphore != VK_NULL_HANDLE) {
+        vkDestroySemaphore(device, m_renderFinishedSemaphore, nullptr);
+        m_renderFinishedSemaphore = VK_NULL_HANDLE;
     }
 
-    if (m_font) {
-        TTF_CloseFont(m_font);
-        m_font = nullptr;
+    if (m_inFlightFence != VK_NULL_HANDLE) {
+        vkDestroyFence(device, m_inFlightFence, nullptr);
+        m_inFlightFence = VK_NULL_HANDLE;
     }
-
-    TTF_Quit();
-
-    if (m_window) {
-        SDL_DestroyWindow(m_window);
-        m_window = nullptr;
-    }
-    SDL_Quit();
-    
-    // Cleanup Vulkan resources
-    auto device = vulkan.GetDevice(); // Use the same vulkan reference
 
     if (m_commandBuffer != VK_NULL_HANDLE) {
         vkFreeCommandBuffers(device, m_commandPool, 1, &m_commandBuffer);
