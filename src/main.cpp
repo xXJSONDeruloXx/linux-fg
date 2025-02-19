@@ -74,8 +74,19 @@ int main(int argc, char* argv[]) {
     }
 
     if (config.outputWidth == 0 || config.outputHeight == 0) {
-        config.outputWidth = config.inputWidth;
-        config.outputHeight = config.inputHeight;
+        if (config.outputHeight != 0) {
+            // Calculate width to maintain aspect ratio
+            float scale = (float)config.outputHeight / config.inputHeight;
+            config.outputWidth = static_cast<uint32_t>(config.inputWidth * scale);
+        } else if (config.outputWidth != 0) {
+            // Calculate height to maintain aspect ratio
+            float scale = (float)config.outputWidth / config.inputWidth;
+            config.outputHeight = static_cast<uint32_t>(config.inputHeight * scale);
+        } else {
+            // If neither dimension is specified, use input dimensions
+            config.outputWidth = config.inputWidth;
+            config.outputHeight = config.inputHeight;
+        }
     }
 
     if (!VulkanContext::Get().Initialize()) {
