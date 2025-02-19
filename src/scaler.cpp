@@ -1,4 +1,12 @@
 #include "scaler.hpp"
+#include <SDL2/SDL_ttf.h>
+
+class Scaler {
+private:
+    // Add members for text rendering
+    TTF_Font* m_font = nullptr;
+    SDL_Surface* m_statsSurface = nullptr;
+    SDL_Color m_textColor = {255, 255, 255, 255}; // White text
 
 bool Scaler::Initialize(const ScalerConfig& config) {
     m_config = config;
@@ -6,6 +14,19 @@ bool Scaler::Initialize(const ScalerConfig& config) {
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         LOG_ERROR("SDL initialization failed: ", SDL_GetError());
+        return false;
+    }
+
+    // After SDL_Init
+    if (TTF_Init() < 0) {
+        LOG_ERROR("TTF initialization failed: ", TTF_GetError());
+        return false;
+    }
+
+    // Load a built-in font (modify path as needed)
+    m_font = TTF_OpenFont("/usr/share/fonts/TTF/DejaVuSans.ttf", 14);
+    if (!m_font) {
+        LOG_ERROR("Failed to load font: ", TTF_GetError());
         return false;
     }
 
@@ -546,6 +567,25 @@ bool Scaler::ProcessFrame() {
         return false;
     }
 
+    // Prepare stats text
+    std::stringstream stats;
+    stats << std::fixed << std::setprecision(1)
+          << "FPS: " << m_currentFps << "\n"
+          << "Input: " << m_config.inputWidth << "x" << m_config.inputHeight << "\n"
+          << "Output: " << m_config.outputWidth << "x" << m_config.outputHeight;
+
+    // Render stats text
+    if (m_statsSurface) {
+        SDL_FreeSurface(m_statsSurface);
+    }
+    m_statsSurface = TTF_RenderText_Blended_Wrapped(m_font, stats.str().c_str(), 
+                                                   m_textColor, m_config.outputWidth);
+
+    if (m_statsSurface) {
+        SDL_Rect dstRect = {10, 10, m_statsSurface->w, m_statsSurface->h};
+        SDL_BlitSurface(m_statsSurface, NULL, windowSurface, &dstRect);
+    }
+
     if (SDL_MUSTLOCK(windowSurface)) {
         SDL_UnlockSurface(windowSurface);
     }
@@ -571,6 +611,18 @@ bool Scaler::ProcessFrame() {
 }
 
 void Scaler::Cleanup() {
+    if (m_statsSurface) {
+        SDL_FreeSurface(m_statsSurface);
+        m_statsSurface = nullptr;
+    }
+    
+    if (m_font) {
+        TTF_CloseFont(m_font);
+        m_font = nullptr;
+    }
+
+    TTF_Quit();
+
     if (m_window) {
         SDL_DestroyWindow(m_window);
         m_window = nullptr;

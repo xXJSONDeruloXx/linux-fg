@@ -24,6 +24,11 @@ pkg_check_modules(SDL2 REQUIRED sdl2)
 include_directories(${SDL2_INCLUDE_DIRS})
 link_directories(${SDL2_LIBRARY_DIRS})
 
+# Add SDL2_ttf dependency
+pkg_check_modules(SDL2_TTF REQUIRED SDL2_ttf)
+include_directories(${SDL2_TTF_INCLUDE_DIRS})
+link_directories(${SDL2_TTF_LIBRARY_DIRS})
+
 # Shader compilation function
 find_program(GLSLC glslc REQUIRED)
 function(compile_shader TARGET SHADER)
@@ -66,6 +71,7 @@ target_include_directories(lossless-scaling PRIVATE
     ${XCB_INCLUDE_DIRS}
     ${SDL2_INCLUDE_DIRS}
     ${WAYLAND_INCLUDE_DIRS}
+    ${SDL2_TTF_INCLUDE_DIRS}
 )
 
 # Link libraries
@@ -75,6 +81,7 @@ target_link_libraries(lossless-scaling PRIVATE
     ${XCB_LIBRARIES}
     ${SDL2_LIBRARIES}  # Changed from SDL2::SDL2
     ${WAYLAND_LIBRARIES}
+    ${SDL2_TTF_LIBRARIES}
     xcb-shm
     X11-xcb
     Xcomposite
