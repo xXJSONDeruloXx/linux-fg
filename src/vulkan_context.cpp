@@ -330,8 +330,3 @@ bool VulkanContext::CreateSwapchain() {
 
     return true;
 }
-
-private:
-    bool CreateSwapchain();
-    VkInstance GetInstance() const { return m_instance; }
-    std::vector<VkImage>& GetSwapchainImages() { return m_swapchainImages; }

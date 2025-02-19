@@ -1,6 +1,6 @@
 #pragma once
 #include <xcb/xcb.h>
-#include <vulkan/vulkan.hpp>
+#include <vulkan/vulkan.h>
 #include <vulkan/vulkan_xcb.h>
 #include <vector>
 #include <memory>
@@ -45,6 +45,10 @@ private:
     bool CreateLogicalDevice();
     uint32_t FindMemoryType(uint32_t typeFilter, VkMemoryPropertyFlags properties);
     bool CheckValidationLayerSupport();
+
+    bool CreateSwapchain();
+    VkInstance GetInstance() const { return m_instance; }
+    std::vector<VkImage>& GetSwapchainImages() { return m_swapchainImages; }
 
     VkInstance m_instance = VK_NULL_HANDLE;
     VkPhysicalDevice m_physicalDevice = VK_NULL_HANDLE;

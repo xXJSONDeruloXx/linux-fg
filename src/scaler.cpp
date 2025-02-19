@@ -563,9 +563,10 @@ bool Scaler::ProcessFrame() {
     copyRegion.dstSubresource.layerCount = 1;
     copyRegion.extent = {m_config.outputWidth, m_config.outputHeight, 1};
 
+    VkImage swapchainImage = VulkanContext::Get().GetSwapchainImages()[imageIndex];
     vkCmdCopyImage(cmdBuffer,
         m_outputFrame.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-        VulkanContext::Get().GetSwapchainImages()[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        swapchainImage, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
         1, &copyRegion);
 
     FrameManager::Get().EndSingleTimeCommands(cmdBuffer);
