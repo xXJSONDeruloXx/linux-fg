@@ -125,7 +125,7 @@ int main(int argc, char* argv[]) {
             }
             
             frameTime = SDL_GetTicks() - frameStart;
-            if (frameDelay > frameTime) {
+            if (static_cast<int>(frameDelay) > frameTime) {
                 SDL_Delay(frameDelay - frameTime);
             }
         }

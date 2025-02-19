@@ -192,8 +192,6 @@ bool WindowCapture::RedirectWindow() {
 bool WindowCapture::GetTopLevelParent() {
     xcb_window_t parent = m_window;
     xcb_window_t root = 0;
-    xcb_window_t* children = nullptr;
-    uint32_t num_children = 0;
  
     while (true) {
         auto query_cookie = xcb_query_tree(m_connection, parent);

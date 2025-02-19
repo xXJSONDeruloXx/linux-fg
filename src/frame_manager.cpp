@@ -1,6 +1,8 @@
 #include "frame_manager.hpp"
 
 bool FrameManager::Initialize(uint32_t width, uint32_t height) {
+    // Use the parameters
+    LOG_INFO("Initializing FrameManager with size: ", width, "x", height);
     if (!CreateCommandPool()) {
         LOG_ERROR("Failed to create command pool");
         return false;
