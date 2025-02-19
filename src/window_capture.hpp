@@ -11,6 +11,9 @@
 #include "frame_manager.hpp"
 #include <queue>
 #include <chrono>
+#include <thread>
+#include <atomic>
+#include <mutex>
  
 enum class DisplayServer {
     X11,
@@ -95,6 +98,11 @@ private:
     // Wayland resources
     WaylandContext m_wayland;
 
-    std::queue<std::chrono::steady_clock::time_point> m_captureTimings; // rename from m_frameTimings
-    float m_sourceFps = 0.0f;
+    std::thread m_captureThread;
+    std::atomic<bool> m_running{true};
+    std::mutex m_frameMutex;
+    std::queue<std::chrono::steady_clock::time_point> m_captureTimings;
+    std::atomic<float> m_sourceFps{0.0f};
+
+    void CaptureLoop();
 };

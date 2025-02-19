@@ -5,6 +5,8 @@
 #include <sstream>
  
 bool WindowCapture::Initialize(uint32_t windowId) {
+    m_running = true;
+    m_captureThread = std::thread(&WindowCapture::CaptureLoop, this);
     std::stringstream ss;
     ss << "0x" << std::hex << std::setw(8) << std::setfill('0') << windowId;
     LOG_INFO("Initializing window capture for window ID: ", ss.str());
@@ -578,6 +580,10 @@ bool WindowCapture::CopyToStagingBuffer(const void* data, size_t size, Frame& fr
 }
  
 void WindowCapture::Cleanup() {
+    m_running = false;
+    if (m_captureThread.joinable()) {
+        m_captureThread.join();
+    }
     CleanupSharedMemory();
     
     if (m_connection) {
@@ -596,5 +602,37 @@ void WindowCapture::Cleanup() {
             wl_shm_destroy(m_wayland.shm);
         }
         wl_display_disconnect(m_wayland.display);
+    }
+}
+
+void WindowCapture::CaptureLoop() {
+    while (m_running) {
+        auto start = std::chrono::steady_clock::now();
+        
+        // Try to capture
+        bool success = false;
+        switch (m_displayServer) {
+            case DisplayServer::X11:
+                success = ProbeCaptureRate();
+                break;
+            // ... other cases
+        }
+
+        if (success) {
+            std::lock_guard<std::mutex> lock(m_frameMutex);
+            m_captureTimings.push(start);
+            
+            // Keep last second
+            auto oneSecondAgo = start - std::chrono::seconds(1);
+            while (!m_captureTimings.empty() && 
+                   m_captureTimings.front() < oneSecondAgo) {
+                m_captureTimings.pop();
+            }
+            
+            m_sourceFps = static_cast<float>(m_captureTimings.size());
+        }
+
+        // Small sleep to prevent excessive CPU usage
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
