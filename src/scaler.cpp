@@ -372,6 +372,17 @@ bool Scaler::ProcessFrame() {
         return false;
     }
 
+    SDL_Event event;
+    while (SDL_PollEvent(&event)) {
+        if (event.type == SDL_QUIT) {
+            return false;
+        }
+        if (event.type == SDL_WINDOWEVENT && 
+            event.window.event == SDL_WINDOWEVENT_CLOSE) {
+            return false;
+        }
+    }
+
     static int frameCount = 0;
     if (frameCount++ % 60 == 0) {  // Log every 60 frames
         LOG_INFO("Current FPS: ", m_currentFps);

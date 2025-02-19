@@ -563,6 +563,7 @@ bool WindowCapture::CopyToStagingBuffer(const void* data, size_t size, Frame& fr
     FrameManager::Get().EndSingleTimeCommands(commandBuffer);
     FrameManager::Get().DestroyStagingBuffer(stagingBuffer, stagingMemory);
  
+    vkQueueWaitIdle(VulkanContext::Get().GetComputeQueue());
     return true;
 }
  

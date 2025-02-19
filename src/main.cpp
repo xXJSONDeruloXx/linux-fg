@@ -111,20 +111,22 @@ int main(int argc, char* argv[]) {
     }
 
     LOG_INFO("Starting main loop");
-    const auto frameTime = std::chrono::microseconds(1000000 / config.targetFps);
-    auto nextFrame = std::chrono::steady_clock::now();
+    const uint32_t frameDelay = 1000 / config.targetFps;
+    uint32_t frameStart;
+    int frameTime;
 
     try {
         while (true) {
-            auto now = std::chrono::steady_clock::now();
-            if (now < nextFrame) {
-                std::this_thread::sleep_for(nextFrame - now);
-            }
-            nextFrame = now + frameTime;
-
+            frameStart = SDL_GetTicks();
+            
             if (!Scaler::Get().ProcessFrame()) {
                 LOG_ERROR("Failed to process frame");
                 break;
+            }
+            
+            frameTime = SDL_GetTicks() - frameStart;
+            if (frameDelay > frameTime) {
+                SDL_Delay(frameDelay - frameTime);
             }
         }
     } catch (const std::exception& e) {
