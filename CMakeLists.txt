@@ -19,8 +19,10 @@ add_definitions(${WAYLAND_CFLAGS_OTHER})
 # Use pkg-config for XCB dependencies
 pkg_check_modules(XCB REQUIRED xcb xcb-shm xcb-composite xcb-xfixes)
 
-# Find SDL2
-find_package(SDL2 REQUIRED)
+# Use pkg-config for SDL2 instead of find_package
+pkg_check_modules(SDL2 REQUIRED sdl2)
+include_directories(${SDL2_INCLUDE_DIRS})
+link_directories(${SDL2_LIBRARY_DIRS})
 
 # Shader compilation function
 find_program(GLSLC glslc REQUIRED)
@@ -71,7 +73,7 @@ target_link_libraries(lossless-scaling PRIVATE
     ${Vulkan_LIBRARIES}
     ${X11_LIBRARIES}
     ${XCB_LIBRARIES}
-    SDL2::SDL2
+    ${SDL2_LIBRARIES}  # Changed from SDL2::SDL2
     ${WAYLAND_LIBRARIES}
     xcb-shm
     X11-xcb
