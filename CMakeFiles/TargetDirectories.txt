@@ -1,0 +1,7 @@
+/home/kurt/Developer/linux-fg/CMakeFiles/lossless-scaling.dir
+/home/kurt/Developer/linux-fg/CMakeFiles/edit_cache.dir
+/home/kurt/Developer/linux-fg/CMakeFiles/rebuild_cache.dir
+/home/kurt/Developer/linux-fg/CMakeFiles/list_install_components.dir
+/home/kurt/Developer/linux-fg/CMakeFiles/install.dir
+/home/kurt/Developer/linux-fg/CMakeFiles/install/local.dir
+/home/kurt/Developer/linux-fg/CMakeFiles/install/strip.dir

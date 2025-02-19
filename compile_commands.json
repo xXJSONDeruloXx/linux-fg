@@ -1,0 +1,32 @@
+[
+{
+  "directory": "/home/kurt/Developer/linux-fg",
+  "command": "/usr/bin/c++  -I/usr/include/SDL2 -I/usr/include/harfbuzz -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -I/home/kurt/Developer/linux-fg/src -std=gnu++20 -o CMakeFiles/lossless-scaling.dir/src/main.cpp.o -c /home/kurt/Developer/linux-fg/src/main.cpp",
+  "file": "/home/kurt/Developer/linux-fg/src/main.cpp",
+  "output": "CMakeFiles/lossless-scaling.dir/src/main.cpp.o"
+},
+{
+  "directory": "/home/kurt/Developer/linux-fg",
+  "command": "/usr/bin/c++  -I/usr/include/SDL2 -I/usr/include/harfbuzz -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -I/home/kurt/Developer/linux-fg/src -std=gnu++20 -o CMakeFiles/lossless-scaling.dir/src/scaler.cpp.o -c /home/kurt/Developer/linux-fg/src/scaler.cpp",
+  "file": "/home/kurt/Developer/linux-fg/src/scaler.cpp",
+  "output": "CMakeFiles/lossless-scaling.dir/src/scaler.cpp.o"
+},
+{
+  "directory": "/home/kurt/Developer/linux-fg",
+  "command": "/usr/bin/c++  -I/usr/include/SDL2 -I/usr/include/harfbuzz -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -I/home/kurt/Developer/linux-fg/src -std=gnu++20 -o CMakeFiles/lossless-scaling.dir/src/frame_manager.cpp.o -c /home/kurt/Developer/linux-fg/src/frame_manager.cpp",
+  "file": "/home/kurt/Developer/linux-fg/src/frame_manager.cpp",
+  "output": "CMakeFiles/lossless-scaling.dir/src/frame_manager.cpp.o"
+},
+{
+  "directory": "/home/kurt/Developer/linux-fg",
+  "command": "/usr/bin/c++  -I/usr/include/SDL2 -I/usr/include/harfbuzz -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -I/home/kurt/Developer/linux-fg/src -std=gnu++20 -o CMakeFiles/lossless-scaling.dir/src/window_capture.cpp.o -c /home/kurt/Developer/linux-fg/src/window_capture.cpp",
+  "file": "/home/kurt/Developer/linux-fg/src/window_capture.cpp",
+  "output": "CMakeFiles/lossless-scaling.dir/src/window_capture.cpp.o"
+},
+{
+  "directory": "/home/kurt/Developer/linux-fg",
+  "command": "/usr/bin/c++  -I/usr/include/SDL2 -I/usr/include/harfbuzz -I/usr/include/freetype2 -I/usr/include/libpng16 -I/usr/include/glib-2.0 -I/usr/lib/x86_64-linux-gnu/glib-2.0/include -I/usr/include/sysprof-6 -I/home/kurt/Developer/linux-fg/src -std=gnu++20 -o CMakeFiles/lossless-scaling.dir/src/vulkan_context.cpp.o -c /home/kurt/Developer/linux-fg/src/vulkan_context.cpp",
+  "file": "/home/kurt/Developer/linux-fg/src/vulkan_context.cpp",
+  "output": "CMakeFiles/lossless-scaling.dir/src/vulkan_context.cpp.o"
+}
+]
