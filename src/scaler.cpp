@@ -259,6 +259,15 @@ bool Scaler::CreateFrameResources() {
 }
 
 bool Scaler::ScaleFrame(const Frame& input, Frame& output) {
+    // Validate frame handles
+    if (input.image == VK_NULL_HANDLE || output.image == VK_NULL_HANDLE) {
+        LOG_ERROR("Invalid frame handles in ScaleFrame - Input: ", 
+                  (input.image == VK_NULL_HANDLE ? "NULL" : "VALID"),
+                  " Output: ",
+                  (output.image == VK_NULL_HANDLE ? "NULL" : "VALID"));
+        return false;
+    }
+
     // Add debug logging
     LOG_INFO("ScaleFrame - Input: ", input.width, "x", input.height,
              " Output: ", output.width, "x", output.height);
@@ -461,26 +470,32 @@ bool Scaler::ProcessFrame() {
         m_lastFpsUpdate = currentTime;
     }
 
+    // Create frames if they don't exist
     if (m_currentFrame.image == VK_NULL_HANDLE) {
-        LOG_INFO("Creating current frame buffer");
         if (!FrameManager::Get().CreateFrame(m_currentFrame, m_config.inputWidth, m_config.inputHeight)) {
             LOG_ERROR("Failed to create current frame");
             return false;
         }
+        LOG_INFO("Created current frame successfully");
+    }
+
+    if (!WindowCapture::Get().CaptureFrame(m_currentFrame)) {
+        LOG_ERROR("Failed to capture frame");
+        return false;
+    }
+    
+    if (m_outputFrame.image == VK_NULL_HANDLE) {
+        if (!FrameManager::Get().CreateFrame(m_outputFrame, m_config.outputWidth, m_config.outputHeight)) {
+            LOG_ERROR("Failed to create output frame");
+            return false;
+        }
+        LOG_INFO("Created output frame successfully");
     }
 
     if (m_config.enableInterpolation && m_previousFrame.image == VK_NULL_HANDLE) {
         LOG_INFO("Creating previous frame buffer");
         if (!FrameManager::Get().CreateFrame(m_previousFrame, m_config.inputWidth, m_config.inputHeight)) {
             LOG_ERROR("Failed to create previous frame");
-            return false;
-        }
-    }
-
-    if (m_outputFrame.image == VK_NULL_HANDLE) {
-        LOG_INFO("Creating output frame buffer");
-        if (!FrameManager::Get().CreateFrame(m_outputFrame, m_config.outputWidth, m_config.outputHeight)) {
-            LOG_ERROR("Failed to create output frame");
             return false;
         }
     }
