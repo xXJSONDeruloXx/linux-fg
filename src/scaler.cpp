@@ -2,6 +2,25 @@
 
 bool Scaler::Initialize(const ScalerConfig& config) {
     m_config = config;
+    
+    // Initialize SDL
+    if (SDL_Init(SDL_INIT_VIDEO) < 0) {
+        LOG_ERROR("SDL initialization failed: ", SDL_GetError());
+        return false;
+    }
+
+    // Create output window
+    m_window = SDL_CreateWindow(
+        "Scaled Output",
+        SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
+        m_config.outputWidth, m_config.outputHeight,
+        SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN
+    );
+
+    if (!m_window) {
+        LOG_ERROR("Failed to create SDL window: ", SDL_GetError());
+        return false;
+    }
 
     if (!CreateCommandPool()) {
         LOG_ERROR("Failed to create command pool");
@@ -412,6 +431,27 @@ bool Scaler::ProcessFrame() {
     }
     LOG_INFO("Frame scaled successfully");
 
+    // Create SDL texture from scaled frame
+    SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(
+        m_outputFrame.data,
+        m_config.outputWidth,
+        m_config.outputHeight,
+        32,
+        m_config.outputWidth * 4,
+        0x000000FF,
+        0x0000FF00,
+        0x00FF0000,
+        0xFF000000
+    );
+
+    if (!surface) {
+        LOG_ERROR("Failed to create SDL surface: ", SDL_GetError());
+        return false;
+    }
+
+    SDL_UpdateWindowSurface(m_window);
+    SDL_FreeSurface(surface);
+
     if (m_config.enableInterpolation) {
         if (!FrameManager::Get().CopyFrameData(m_currentFrame, m_previousFrame)) {
             LOG_ERROR("Failed to store frame for interpolation");
@@ -423,6 +463,12 @@ bool Scaler::ProcessFrame() {
 }
 
 void Scaler::Cleanup() {
+    if (m_window) {
+        SDL_DestroyWindow(m_window);
+        m_window = nullptr;
+    }
+    SDL_Quit();
+    
     auto& vulkan = VulkanContext::Get();
     auto device = vulkan.GetDevice();
 
