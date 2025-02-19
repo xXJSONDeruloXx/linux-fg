@@ -64,6 +64,12 @@ private:
     VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
     VkSampler m_sampler = VK_NULL_HANDLE;
 
+    // Add these members
+    VkSemaphore m_imageAvailableSemaphore = VK_NULL_HANDLE;
+    VkSemaphore m_renderFinishedSemaphore = VK_NULL_HANDLE;
+    uint32_t m_currentSwapchainImage = 0;
+    VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
+
     std::queue<std::chrono::steady_clock::time_point> m_frameTimings;
     float m_currentFps = 0.0f;
 

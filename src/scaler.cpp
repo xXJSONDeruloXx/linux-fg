@@ -3,13 +3,24 @@
 bool Scaler::Initialize(const ScalerConfig& config) {
     m_config = config;
     
-    // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
         LOG_ERROR("SDL initialization failed: ", SDL_GetError());
         return false;
     }
 
-    // Create output window
+    // Get required Vulkan extensions for SDL
+    unsigned int extensionCount;
+    if (!SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, nullptr)) {
+        LOG_ERROR("Failed to get Vulkan extension count");
+        return false;
+    }
+
+    std::vector<const char*> extensions(extensionCount);
+    if (!SDL_Vulkan_GetInstanceExtensions(nullptr, &extensionCount, extensions.data())) {
+        LOG_ERROR("Failed to get Vulkan extensions");
+        return false;
+    }
+
     m_window = SDL_CreateWindow(
         "Scaled Output",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
@@ -19,6 +30,13 @@ bool Scaler::Initialize(const ScalerConfig& config) {
 
     if (!m_window) {
         LOG_ERROR("Failed to create SDL window: ", SDL_GetError());
+        return false;
+    }
+
+    // Create Vulkan surface
+    VkSurfaceKHR surface;
+    if (!SDL_Vulkan_CreateSurface(m_window, VulkanContext::Get().GetInstance(), &surface)) {
+        LOG_ERROR("Failed to create Vulkan surface");
         return false;
     }
 
@@ -517,6 +535,54 @@ bool Scaler::ProcessFrame() {
             LOG_ERROR("Failed to store frame for interpolation");
             return false;
         }
+    }
+
+    // Acquire next swapchain image
+    uint32_t imageIndex;
+    VkResult result = vkAcquireNextImageKHR(
+        VulkanContext::Get().GetDevice(),
+        VulkanContext::Get().GetSwapchain(),
+        UINT64_MAX,
+        m_imageAvailableSemaphore,
+        VK_NULL_HANDLE,
+        &imageIndex
+    );
+
+    if (result != VK_SUCCESS) {
+        LOG_ERROR("Failed to acquire swapchain image");
+        return false;
+    }
+
+    // Copy scaled output to swapchain image
+    VkCommandBuffer cmdBuffer = FrameManager::Get().BeginSingleTimeCommands();
+    
+    VkImageCopy copyRegion{};
+    copyRegion.srcSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.srcSubresource.layerCount = 1;
+    copyRegion.dstSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    copyRegion.dstSubresource.layerCount = 1;
+    copyRegion.extent = {m_config.outputWidth, m_config.outputHeight, 1};
+
+    vkCmdCopyImage(cmdBuffer,
+        m_outputFrame.image, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        VulkanContext::Get().GetSwapchainImages()[imageIndex], VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
+        1, &copyRegion);
+
+    FrameManager::Get().EndSingleTimeCommands(cmdBuffer);
+
+    // Present
+    VkPresentInfoKHR presentInfo{};
+    presentInfo.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR;
+    presentInfo.waitSemaphoreCount = 1;
+    presentInfo.pWaitSemaphores = &m_renderFinishedSemaphore;
+    presentInfo.swapchainCount = 1;
+    presentInfo.pSwapchains = &VulkanContext::Get().GetSwapchain();
+    presentInfo.pImageIndices = &imageIndex;
+
+    result = vkQueuePresentKHR(VulkanContext::Get().GetPresentQueue(), &presentInfo);
+    if (result != VK_SUCCESS) {
+        LOG_ERROR("Failed to present swapchain image");
+        return false;
     }
 
     return true;

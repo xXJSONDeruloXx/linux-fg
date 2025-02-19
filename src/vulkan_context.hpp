@@ -32,6 +32,10 @@ public:
     void DestroyBuffer(VkBuffer buffer, VkDeviceMemory memory);
     void DestroyImage(VkImage image, VkDeviceMemory memory);
 
+    VkQueue GetPresentQueue() const { return m_presentQueue; }
+    VkSwapchainKHR GetSwapchain() const { return m_swapchain; }
+    VkSurfaceKHR GetSurface() const { return m_surface; }
+
 private:
     VulkanContext() = default;
     ~VulkanContext() { Cleanup(); }
@@ -47,6 +51,14 @@ private:
     VkDevice m_device = VK_NULL_HANDLE;
     VkQueue m_computeQueue = VK_NULL_HANDLE;
     uint32_t m_computeQueueFamily = 0;
+
+    VkQueue m_presentQueue = VK_NULL_HANDLE;
+    uint32_t m_presentQueueFamily = 0;
+    VkSurfaceKHR m_surface = VK_NULL_HANDLE;
+    VkSwapchainKHR m_swapchain = VK_NULL_HANDLE;
+    std::vector<VkImage> m_swapchainImages;
+    std::vector<VkImageView> m_swapchainImageViews;
+    VkFormat m_swapchainFormat = VK_FORMAT_B8G8R8A8_UNORM;
 
     const std::vector<const char*> m_validationLayers = {
         "VK_LAYER_KHRONOS_validation"

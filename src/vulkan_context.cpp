@@ -18,6 +18,12 @@ bool VulkanContext::Initialize() {
         return false;
     }
 
+    // Create swapchain
+    if (!CreateSwapchain()) {
+        LOG_ERROR("Failed to create swapchain");
+        return false;
+    }
+
     LOG_INFO("Vulkan context initialized successfully");
     return true;
 }
@@ -54,7 +60,8 @@ bool VulkanContext::CreateInstance() {
 
     std::vector<const char*> extensions = {
         VK_KHR_SURFACE_EXTENSION_NAME,
-        VK_KHR_XCB_SURFACE_EXTENSION_NAME
+        VK_KHR_XCB_SURFACE_EXTENSION_NAME,
+        VK_KHR_SWAPCHAIN_EXTENSION_NAME
     };
 
     createInfo.enabledExtensionCount = static_cast<uint32_t>(extensions.size());
@@ -290,6 +297,28 @@ bool VulkanContext::CheckValidationLayerSupport() {
         if (!layerFound) {
             return false;
         }
+    }
+
+    return true;
+}
+
+bool VulkanContext::CreateSwapchain() {
+    VkSwapchainCreateInfoKHR createInfo{};
+    createInfo.sType = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR;
+    createInfo.surface = m_surface;
+    createInfo.minImageCount = 2;
+    createInfo.imageFormat = m_swapchainFormat;
+    createInfo.imageColorSpace = VK_COLOR_SPACE_SRGB_NONLINEAR_KHR;
+    createInfo.imageExtent = {width, height};
+    createInfo.imageArrayLayers = 1;
+    createInfo.imageUsage = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT;
+    createInfo.preTransform = VK_SURFACE_TRANSFORM_IDENTITY_BIT_KHR;
+    createInfo.compositeAlpha = VK_COMPOSITE_ALPHA_OPAQUE_BIT_KHR;
+    createInfo.presentMode = VK_PRESENT_MODE_FIFO_KHR;
+    createInfo.clipped = VK_TRUE;
+
+    if (vkCreateSwapchainKHR(m_device, &createInfo, nullptr, &m_swapchain) != VK_SUCCESS) {
+        return false;
     }
 
     return true;
