@@ -438,17 +438,22 @@ bool Scaler::ProcessFrame() {
         m_currentFps = 1000.0f * (m_frameTimings.size() - 1) / duration;
     }
 
-    // Update parent window FPS
-    m_parentFrameTimings.push(currentTime);
+    // Update parent window FPS only when we actually capture a new frame
+    if (!WindowCapture::Get().CaptureFrame(m_currentFrame)) {
+        LOG_ERROR("Failed to capture frame");
+        return false;
+    } else {
+        // Only update parent FPS when we get a new frame
+        m_parentFrameTimings.push(currentTime);
+        while (m_parentFrameTimings.size() > 60) {
+            m_parentFrameTimings.pop();
+        }
 
-    while (m_parentFrameTimings.size() > 60) {
-        m_parentFrameTimings.pop();
-    }
-
-    if (m_parentFrameTimings.size() > 1) {
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-            m_parentFrameTimings.back() - m_parentFrameTimings.front()).count();
-        m_parentFps = 1000.0f * (m_parentFrameTimings.size() - 1) / duration;
+        if (m_parentFrameTimings.size() > 1) {
+            auto parentDuration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                m_parentFrameTimings.back() - m_parentFrameTimings.front()).count();
+            m_parentFps = 1000.0f * (m_parentFrameTimings.size() - 1) / parentDuration;
+        }
     }
 
     if (m_currentFrame.image == VK_NULL_HANDLE) {
