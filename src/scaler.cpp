@@ -431,9 +431,64 @@ bool Scaler::ProcessFrame() {
     }
     LOG_INFO("Frame scaled successfully");
 
-    // Create SDL texture from scaled frame
+    // Create staging buffer for reading back the image data
+    VkBuffer stagingBuffer;
+    VkDeviceMemory stagingMemory;
+    VkDeviceSize bufferSize = m_config.outputWidth * m_config.outputHeight * 4;
+
+    if (!FrameManager::Get().CreateStagingBuffer(stagingBuffer, stagingMemory, bufferSize)) {
+        LOG_ERROR("Failed to create staging buffer");
+        return false;
+    }
+
+    // Copy image data to staging buffer
+    VkCommandBuffer commandBuffer = FrameManager::Get().BeginSingleTimeCommands();
+    
+    VkImageMemoryBarrier barrier{};
+    barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+    barrier.oldLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
+    barrier.newLayout = VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL;
+    barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+    barrier.image = m_outputFrame.image;
+    barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    barrier.subresourceRange.baseMipLevel = 0;
+    barrier.subresourceRange.levelCount = 1;
+    barrier.subresourceRange.baseArrayLayer = 0;
+    barrier.subresourceRange.layerCount = 1;
+    barrier.srcAccessMask = VK_ACCESS_SHADER_READ_BIT;
+    barrier.dstAccessMask = VK_ACCESS_TRANSFER_READ_BIT;
+
+    vkCmdPipelineBarrier(commandBuffer,
+        VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT,
+        VK_PIPELINE_STAGE_TRANSFER_BIT,
+        0,
+        0, nullptr,
+        0, nullptr,
+        1, &barrier);
+
+    VkBufferImageCopy region{};
+    region.imageSubresource.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT;
+    region.imageSubresource.layerCount = 1;
+    region.imageExtent.width = m_config.outputWidth;
+    region.imageExtent.height = m_config.outputHeight;
+    region.imageExtent.depth = 1;
+
+    vkCmdCopyImageToBuffer(commandBuffer,
+        m_outputFrame.image,
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
+        stagingBuffer,
+        1,
+        &region);
+
+    FrameManager::Get().EndSingleTimeCommands(commandBuffer);
+
+    // Map the staging buffer and create SDL surface
+    void* data;
+    vkMapMemory(VulkanContext::Get().GetDevice(), stagingMemory, 0, bufferSize, 0, &data);
+
     SDL_Surface* surface = SDL_CreateRGBSurfaceFrom(
-        m_outputFrame.data,
+        data,
         m_config.outputWidth,
         m_config.outputHeight,
         32,
@@ -446,11 +501,16 @@ bool Scaler::ProcessFrame() {
 
     if (!surface) {
         LOG_ERROR("Failed to create SDL surface: ", SDL_GetError());
+        vkUnmapMemory(VulkanContext::Get().GetDevice(), stagingMemory);
+        FrameManager::Get().DestroyStagingBuffer(stagingBuffer, stagingMemory);
         return false;
     }
 
     SDL_UpdateWindowSurface(m_window);
     SDL_FreeSurface(surface);
+
+    vkUnmapMemory(VulkanContext::Get().GetDevice(), stagingMemory);
+    FrameManager::Get().DestroyStagingBuffer(stagingBuffer, stagingMemory);
 
     if (m_config.enableInterpolation) {
         if (!FrameManager::Get().CopyFrameData(m_currentFrame, m_previousFrame)) {
