@@ -70,11 +70,12 @@ private:
     SDL_Surface* m_statsSurface = nullptr;
     SDL_Color m_textColor = {255, 255, 255, 255};
 
-    std::queue<std::chrono::steady_clock::time_point> m_frameTimings;
+    std::queue<std::chrono::steady_clock::time_point> m_frameTimings;      // output timings
+    std::queue<std::chrono::steady_clock::time_point> m_sourceFrameTimings; // source timings
     float m_currentFps = 0.0f;
-
-    SDL_Window* m_window = nullptr;
-
+    float m_sourceFps = 0.0f;
     std::chrono::steady_clock::time_point m_lastFpsUpdate;
     const std::chrono::milliseconds m_fpsUpdateInterval{1}; // 1ms interval
+
+    SDL_Window* m_window = nullptr;
 };

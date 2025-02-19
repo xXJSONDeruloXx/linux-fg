@@ -427,18 +427,35 @@ bool Scaler::ProcessFrame() {
     }
 
     auto currentTime = std::chrono::steady_clock::now();
-    m_frameTimings.push(currentTime);
+    
+    // Track source frame timing when we capture a new frame
+    if (WindowCapture::Get().CaptureFrame(m_currentFrame)) {
+        m_sourceFrameTimings.push(currentTime);
+        while (m_sourceFrameTimings.size() > 60) {
+            m_sourceFrameTimings.pop();
+        }
+    }
 
-    // Only update FPS calculation every 1ms
+    // Track output frame timing
+    m_frameTimings.push(currentTime);
+    
+    // Update FPS calculations every 1ms
     if (currentTime - m_lastFpsUpdate >= m_fpsUpdateInterval) {
+        // Calculate output FPS
         while (m_frameTimings.size() > 60) {
             m_frameTimings.pop();
         }
-
         if (m_frameTimings.size() > 1) {
             auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
                 m_frameTimings.back() - m_frameTimings.front()).count();
             m_currentFps = 1000.0f * (m_frameTimings.size() - 1) / duration;
+        }
+
+        // Calculate source FPS
+        if (m_sourceFrameTimings.size() > 1) {
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                m_sourceFrameTimings.back() - m_sourceFrameTimings.front()).count();
+            m_sourceFps = 1000.0f * (m_sourceFrameTimings.size() - 1) / duration;
         }
         
         m_lastFpsUpdate = currentTime;
@@ -589,7 +606,8 @@ bool Scaler::ProcessFrame() {
     // Prepare stats text
     std::stringstream stats;
     stats << std::fixed << std::setprecision(1)
-          << "FPS: " << m_currentFps << "\n"
+          << "Source FPS: " << m_sourceFps << "\n"
+          << "Output FPS: " << m_currentFps << "\n"
           << "Input: " << m_config.inputWidth << "x" << m_config.inputHeight << "\n"
           << "Output: " << m_config.outputWidth << "x" << m_config.outputHeight;
 
