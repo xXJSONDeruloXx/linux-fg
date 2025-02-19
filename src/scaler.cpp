@@ -507,10 +507,10 @@ bool Scaler::ProcessFrame() {
         m_config.outputHeight,
         32,
         m_config.outputWidth * 4,
-        0x000000FF,
-        0x0000FF00,
-        0x00FF0000,
-        0xFF000000
+        0x00FF0000,  // B mask
+        0x0000FF00,  // G mask
+        0x000000FF,  // R mask
+        0xFF000000   // A mask
     );
 
     if (!surface) {
