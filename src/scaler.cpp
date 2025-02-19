@@ -3,6 +3,7 @@
 
 bool Scaler::Initialize(const ScalerConfig& config) {
     m_config = config;
+    m_lastFpsUpdate = std::chrono::steady_clock::now();
     
     // Initialize SDL
     if (SDL_Init(SDL_INIT_VIDEO) < 0) {
@@ -428,14 +429,19 @@ bool Scaler::ProcessFrame() {
     auto currentTime = std::chrono::steady_clock::now();
     m_frameTimings.push(currentTime);
 
-    while (m_frameTimings.size() > 60) {
-        m_frameTimings.pop();
-    }
+    // Only update FPS calculation every 1ms
+    if (currentTime - m_lastFpsUpdate >= m_fpsUpdateInterval) {
+        while (m_frameTimings.size() > 60) {
+            m_frameTimings.pop();
+        }
 
-    if (m_frameTimings.size() > 1) {
-        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
-            m_frameTimings.back() - m_frameTimings.front()).count();
-        m_currentFps = 1000.0f * (m_frameTimings.size() - 1) / duration;
+        if (m_frameTimings.size() > 1) {
+            auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+                m_frameTimings.back() - m_frameTimings.front()).count();
+            m_currentFps = 1000.0f * (m_frameTimings.size() - 1) / duration;
+        }
+        
+        m_lastFpsUpdate = currentTime;
     }
 
     if (m_currentFrame.image == VK_NULL_HANDLE) {

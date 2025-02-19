@@ -74,4 +74,7 @@ private:
     float m_currentFps = 0.0f;
 
     SDL_Window* m_window = nullptr;
+
+    std::chrono::steady_clock::time_point m_lastFpsUpdate;
+    const std::chrono::milliseconds m_fpsUpdateInterval{1}; // 1ms interval
 };
