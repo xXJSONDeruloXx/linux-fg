@@ -5,12 +5,13 @@
 #include <sstream>
  
 bool WindowCapture::Initialize(uint32_t windowId) {
+    m_window = windowId;
     m_running = true;
-    m_captureThread = std::thread(&WindowCapture::CaptureLoop, this);
+    m_lastUpdate = std::chrono::steady_clock::now();
+    m_probeThread = std::thread(&WindowCapture::ProbeLoop, this);
     std::stringstream ss;
     ss << "0x" << std::hex << std::setw(8) << std::setfill('0') << windowId;
     LOG_INFO("Initializing window capture for window ID: ", ss.str());
-    m_window = windowId;
  
     if (!DetectDisplayServer()) {
         LOG_ERROR("Failed to detect display server");
@@ -581,8 +582,8 @@ bool WindowCapture::CopyToStagingBuffer(const void* data, size_t size, Frame& fr
  
 void WindowCapture::Cleanup() {
     m_running = false;
-    if (m_captureThread.joinable()) {
-        m_captureThread.join();
+    if (m_probeThread.joinable()) {
+        m_probeThread.join();
     }
     CleanupSharedMemory();
     
@@ -602,6 +603,42 @@ void WindowCapture::Cleanup() {
             wl_shm_destroy(m_wayland.shm);
         }
         wl_display_disconnect(m_wayland.display);
+    }
+}
+
+bool WindowCapture::ProbeCaptureRate() {
+    if (m_displayServer != DisplayServer::X11) {
+        return false;
+    }
+
+    xcb_get_geometry_cookie_t geomCookie = xcb_get_geometry(m_connection, m_window);
+    xcb_get_geometry_reply_t* geom = xcb_get_geometry_reply(m_connection, geomCookie, nullptr);
+    
+    if (!geom) {
+        return false;
+    }
+    
+    free(geom);
+    return true;
+}
+
+void WindowCapture::ProbeLoop() {
+    while (m_running) {
+        if (ProbeCaptureRate()) {
+            std::lock_guard<std::mutex> lock(m_metricsMutex);
+            m_frameCounter++;
+            
+            auto now = std::chrono::steady_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(
+                now - m_lastUpdate).count();
+                
+            if (elapsed >= 1000) {  // Update FPS every second
+                m_sourceFps = (float)m_frameCounter * 1000.0f / elapsed;
+                m_frameCounter = 0;
+                m_lastUpdate = now;
+            }
+        }
+        std::this_thread::sleep_for(std::chrono::microseconds(100)); // Poll at ~10KHz
     }
 }
 

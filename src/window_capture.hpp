@@ -105,4 +105,12 @@ private:
     std::atomic<float> m_sourceFps{0.0f};
 
     void CaptureLoop();
+
+    std::thread m_probeThread;
+    std::mutex m_metricsMutex;
+    std::chrono::steady_clock::time_point m_lastUpdate;
+    uint32_t m_frameCounter = 0;
+    
+    void ProbeLoop();
+    bool ProbeCaptureRate();
 };
