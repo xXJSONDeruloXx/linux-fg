@@ -120,8 +120,8 @@ int main(int argc, char* argv[]) {
             frameStart = SDL_GetTicks();
             
             if (!Scaler::Get().ProcessFrame()) {
-                LOG_ERROR("Failed to process frame");
-                break;
+                LOG_INFO("ProcessFrame returned false, cleaning up...");
+                break;  // This will exit the loop cleanly
             }
             
             frameTime = SDL_GetTicks() - frameStart;
@@ -133,6 +133,8 @@ int main(int argc, char* argv[]) {
         LOG_ERROR("Exception caught: ", e.what());
     }
 
+    // Make sure cleanup happens in correct order
+    LOG_INFO("Starting cleanup...");
     Scaler::Get().Cleanup();
     FrameManager::Get().Cleanup();
     VulkanContext::Get().Cleanup();

@@ -400,14 +400,20 @@ bool Scaler::ProcessFrame() {
         return false;
     }
 
+    // Handle SDL events properly
     SDL_Event event;
     while (SDL_PollEvent(&event)) {
-        if (event.type == SDL_QUIT) {
-            return false;
-        }
-        if (event.type == SDL_WINDOWEVENT && 
-            event.window.event == SDL_WINDOWEVENT_CLOSE) {
-            return false;
+        switch (event.type) {
+            case SDL_QUIT:
+                LOG_INFO("Received SDL_QUIT event");
+                return false;
+                
+            case SDL_WINDOWEVENT:
+                if (event.window.event == SDL_WINDOWEVENT_CLOSE) {
+                    LOG_INFO("Received window close event");
+                    return false;
+                }
+                break;
         }
     }
 
