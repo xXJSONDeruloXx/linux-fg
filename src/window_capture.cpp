@@ -385,13 +385,20 @@ bool WindowCapture::CaptureXCompositeFrame(Frame& frame) {
         0
     );
  
-    error = xcb_request_check(m_connection, shm_cookie);
-    if (!error) {
+    auto shm_reply = xcb_shm_get_image_reply(m_connection, shm_cookie, &error);
+    if (shm_reply && !error) {
         // SHM capture succeeded
         xcb_free_pixmap(m_connection, pixmap);
-        return CopyToStagingBuffer(m_shmData, m_width * m_height * 4, frame);
+        bool result = CopyToStagingBuffer(m_shmData, m_width * m_height * 4, frame);
+        free(shm_reply);
+        return result;
     }
-    free(error);
+    if (error) {
+        free(error);
+    }
+    if (shm_reply) {
+        free(shm_reply);
+    }
  
     // Fallback to regular capture
     auto cookie = xcb_get_image(
