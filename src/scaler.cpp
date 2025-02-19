@@ -1,13 +1,6 @@
 #include "scaler.hpp"
 #include <SDL2/SDL_ttf.h>
 
-class Scaler {
-private:
-    // Add members for text rendering
-    TTF_Font* m_font = nullptr;
-    SDL_Surface* m_statsSurface = nullptr;
-    SDL_Color m_textColor = {255, 255, 255, 255}; // White text
-
 bool Scaler::Initialize(const ScalerConfig& config) {
     m_config = config;
     

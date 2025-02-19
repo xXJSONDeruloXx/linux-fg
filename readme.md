@@ -21,10 +21,10 @@ sudo apt install build-essential cmake libvulkan-dev vulkan-tools \
     libx11-dev libxcb-dev pkg-config vulkan-headers \
     libxshmfence-dev libxcb-shm0-dev libxcb-image0-dev \
     spirv-tools glslang-tools vulkan-validationlayers-dev \
-    libwayland-dev wayland-protocols libsdl2-dev
+    libwayland-dev wayland-protocols libsdl2-dev libsdl2-ttf-dev
 ```
 
-For Arch Linux:
+For Arch Linux: (needs updates lol)
 ```bash
 sudo pacman -S base-devel cmake vulkan-devel vulkan-tools shaderc xcb-util \
     xcb-util-wm xcb-util-keysyms libx11 libxcb pkg-config vulkan-headers \

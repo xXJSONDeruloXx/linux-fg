@@ -3,6 +3,7 @@
 #include <queue>
 #include <fstream>
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>  // Add this include
 #include "frame_manager.hpp"
 #include "window_capture.hpp"
 
@@ -63,6 +64,11 @@ private:
     VkCommandPool m_commandPool = VK_NULL_HANDLE;
     VkCommandBuffer m_commandBuffer = VK_NULL_HANDLE;
     VkSampler m_sampler = VK_NULL_HANDLE;
+
+    // Add these new members
+    TTF_Font* m_font = nullptr;
+    SDL_Surface* m_statsSurface = nullptr;
+    SDL_Color m_textColor = {255, 255, 255, 255};
 
     std::queue<std::chrono::steady_clock::time_point> m_frameTimings;
     float m_currentFps = 0.0f;
