@@ -110,6 +110,29 @@ bool WindowCapture::SetupX11Connection() {
     return true;
 }
  
+bool WindowCapture::SetupWaylandConnection() {
+    LOG_INFO("Setting up Wayland connection...");
+    
+    // Initialize Wayland display connection
+    m_wayland.display = wl_display_connect(nullptr);
+    if (!m_wayland.display) {
+        LOG_ERROR("Failed to connect to Wayland display");
+        return false;
+    }
+
+    // Get the registry
+    m_wayland.registry = wl_display_get_registry(m_wayland.display);
+    if (!m_wayland.registry) {
+        LOG_ERROR("Failed to get Wayland registry");
+        wl_display_disconnect(m_wayland.display);
+        m_wayland.display = nullptr;
+        return false;
+    }
+
+    LOG_INFO("Wayland connection established");
+    return true;
+}
+
 bool WindowCapture::InitializeCompositing() {
     auto composite_query = xcb_composite_query_version(
         m_connection,
