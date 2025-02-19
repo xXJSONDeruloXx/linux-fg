@@ -135,13 +135,14 @@ bool Scaler::CreateComputePipeline() {
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
-            .pImmutableSamplers = nullptr  // Add this
+            .pImmutableSamplers = nullptr
         },
         {
             .binding = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
             .descriptorCount = 1,
             .stageFlags = VK_SHADER_STAGE_COMPUTE_BIT,
+            .pImmutableSamplers = nullptr
         }
     };
 
@@ -277,27 +278,25 @@ bool Scaler::ScaleFrame(const Frame& input, Frame& output) {
     std::vector<VkWriteDescriptorSet> descriptorWrites = {
         {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,              // Add these
-            .pBufferInfo = nullptr,
-            .pTexelBufferView = nullptr,
             .dstSet = m_descriptorSet,
             .dstBinding = 0,
             .dstArrayElement = 0,
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
             .pImageInfo = &inputInfo,
+            .pBufferInfo = nullptr,
+            .pTexelBufferView = nullptr
         },
         {
             .sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-            .pNext = nullptr,              // Add these
-            .pBufferInfo = nullptr,
-            .pTexelBufferView = nullptr,
             .dstSet = m_descriptorSet,
             .dstBinding = 1,
             .dstArrayElement = 0,
             .descriptorCount = 1,
             .descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
             .pImageInfo = &outputInfo,
+            .pBufferInfo = nullptr,
+            .pTexelBufferView = nullptr
         }
     };
 
