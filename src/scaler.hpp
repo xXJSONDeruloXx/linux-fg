@@ -2,6 +2,7 @@
 #include <memory>
 #include <queue>
 #include <fstream>
+#include <SDL2/SDL.h>
 #include "frame_manager.hpp"
 #include "window_capture.hpp"
 
