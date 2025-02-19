@@ -46,6 +46,11 @@ First, get the window ID you want to capture:
 xwininfo | grep "Window id"
 ```
 
+or, to see all apps, you can also use
+```bash
+wmctrl -l
+```
+
 Then run the application:
 ```bash
 ./lossless-scaling [options] window-id

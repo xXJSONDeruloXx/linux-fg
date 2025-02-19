@@ -211,6 +211,10 @@ bool Scaler::CreateFrameResources() {
 }
 
 bool Scaler::ScaleFrame(const Frame& input, Frame& output) {
+    // Add debug logging
+    LOG_INFO("ScaleFrame - Input: ", input.width, "x", input.height,
+             " Output: ", output.width, "x", output.height);
+
     auto& vulkan = VulkanContext::Get();
     
     VkDescriptorImageInfo inputInfo{};
@@ -304,6 +308,10 @@ bool Scaler::ScaleFrame(const Frame& input, Frame& output) {
 
     uint32_t groupsX = (output.width + 15) / 16;
     uint32_t groupsY = (output.height + 15) / 16;
+
+    // Log dispatch parameters
+    LOG_INFO("Dispatch groups: ", groupsX, "x", groupsY);
+    
     vkCmdDispatch(m_commandBuffer, groupsX, groupsY, 1);
 
     barrier.image = output.image;
