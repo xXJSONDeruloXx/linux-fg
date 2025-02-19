@@ -14,7 +14,7 @@ bool Scaler::Initialize(const ScalerConfig& config) {
         "Scaled Output",
         SDL_WINDOWPOS_UNDEFINED, SDL_WINDOWPOS_UNDEFINED,
         m_config.outputWidth, m_config.outputHeight,
-        SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN
+        SDL_WINDOW_VULKAN | SDL_WINDOW_SHOWN | SDL_WINDOW_ALLOW_HIGHDPI  // Add HIGHDPI support
     );
 
     if (!m_window) {
@@ -53,7 +53,7 @@ bool Scaler::Initialize(const ScalerConfig& config) {
 }
 
 bool Scaler::CreateCommandPool() {
-    auto& vulkan = VulkanContext::Get();
+    VulkanContext& vulkan = VulkanContext::Get();
     
     VkCommandPoolCreateInfo poolInfo{};
     poolInfo.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO;
@@ -69,7 +69,7 @@ bool Scaler::CreateCommandPool() {
 }
 
 bool Scaler::LoadShaders() {
-    auto& vulkan = VulkanContext::Get();
+    VulkanContext& vulkan = VulkanContext::Get();
     
     std::ifstream file("shaders/scale.comp.spv", std::ios::ate | std::ios::binary);
     if (!file.is_open()) {
@@ -98,7 +98,7 @@ bool Scaler::LoadShaders() {
 }
 
 bool Scaler::CreateComputePipeline() {
-    auto& vulkan = VulkanContext::Get();
+    VulkanContext& vulkan = VulkanContext::Get();
     auto device = vulkan.GetDevice();
 
     std::vector<VkDescriptorSetLayoutBinding> bindings = {
@@ -160,7 +160,7 @@ bool Scaler::CreateComputePipeline() {
 }
 
 bool Scaler::CreateDescriptorPool() {
-    auto& vulkan = VulkanContext::Get();
+    VulkanContext& vulkan = VulkanContext::Get();
     auto device = vulkan.GetDevice();
 
     std::vector<VkDescriptorPoolSize> poolSizes = {
@@ -189,7 +189,7 @@ bool Scaler::CreateDescriptorPool() {
 }
 
 bool Scaler::CreateFrameResources() {
-    auto& vulkan = VulkanContext::Get();
+    VulkanContext& vulkan = VulkanContext::Get();
     
     VkSamplerCreateInfo samplerInfo{};
     samplerInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
@@ -234,7 +234,7 @@ bool Scaler::ScaleFrame(const Frame& input, Frame& output) {
     LOG_INFO("ScaleFrame - Input: ", input.width, "x", input.height,
              " Output: ", output.width, "x", output.height);
 
-    auto& vulkan = VulkanContext::Get();
+    VulkanContext& vulkan = VulkanContext::Get();
     
     VkDescriptorImageInfo inputInfo{};
     inputInfo.imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL;
@@ -483,6 +483,9 @@ bool Scaler::ProcessFrame() {
 
     FrameManager::Get().EndSingleTimeCommands(commandBuffer);
 
+    // Ensure compute operations are complete
+    vkQueueWaitIdle(vulkan.GetComputeQueue());
+
     // Map the staging buffer and create SDL surface
     void* data;
     vkMapMemory(VulkanContext::Get().GetDevice(), stagingMemory, 0, bufferSize, 0, &data);
@@ -506,7 +509,41 @@ bool Scaler::ProcessFrame() {
         return false;
     }
 
-    SDL_UpdateWindowSurface(m_window);
+    // Get the window surface
+    SDL_Surface* windowSurface = SDL_GetWindowSurface(m_window);
+    if (!windowSurface) {
+        LOG_ERROR("Failed to get window surface: ", SDL_GetError());
+        SDL_FreeSurface(surface);
+        vkUnmapMemory(VulkanContext::Get().GetDevice(), stagingMemory);
+        FrameManager::Get().DestroyStagingBuffer(stagingBuffer, stagingMemory);
+        return false;
+    }
+
+    if (SDL_MUSTLOCK(windowSurface)) {
+        if (SDL_LockSurface(windowSurface) < 0) {
+            LOG_ERROR("Failed to lock window surface: ", SDL_GetError());
+            return false;
+        }
+    }
+
+    // Blit the surface to the window surface
+    if (SDL_BlitSurface(surface, NULL, windowSurface, NULL) != 0) {
+        LOG_ERROR("Failed to blit surface: ", SDL_GetError());
+        SDL_FreeSurface(surface);
+        vkUnmapMemory(VulkanContext::Get().GetDevice(), stagingMemory);
+        FrameManager::Get().DestroyStagingBuffer(stagingBuffer, stagingMemory);
+        return false;
+    }
+
+    if (SDL_MUSTLOCK(windowSurface)) {
+        SDL_UnlockSurface(windowSurface);
+    }
+
+    // Update the window with the new content
+    if (SDL_UpdateWindowSurface(m_window) != 0) {
+        LOG_ERROR("Failed to update window surface: ", SDL_GetError());
+    }
+
     SDL_FreeSurface(surface);
 
     vkUnmapMemory(VulkanContext::Get().GetDevice(), stagingMemory);
@@ -529,7 +566,7 @@ void Scaler::Cleanup() {
     }
     SDL_Quit();
     
-    auto& vulkan = VulkanContext::Get();
+    VulkanContext& vulkan = VulkanContext::Get();
     auto device = vulkan.GetDevice();
 
     vkDeviceWaitIdle(device);

@@ -330,6 +330,8 @@ bool WindowCapture::GetWindowSize(uint32_t& width, uint32_t& height) {
 }
  
 bool WindowCapture::CaptureFrame(Frame& frame) {
+    LOG_INFO("Capturing frame with display server type: ", 
+             static_cast<int>(m_displayServer));
     switch (m_displayServer) {
         case DisplayServer::X11:
             return m_hasComposite ? CaptureXCompositeFrame(frame) : CaptureX11Frame(frame);
