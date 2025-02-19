@@ -484,7 +484,7 @@ bool Scaler::ProcessFrame() {
     FrameManager::Get().EndSingleTimeCommands(commandBuffer);
 
     // Ensure compute operations are complete
-    vkQueueWaitIdle(vulkan.GetComputeQueue());
+    vkQueueWaitIdle(VulkanContext::Get().GetComputeQueue());
 
     // Map the staging buffer and create SDL surface
     void* data;
