@@ -618,13 +618,13 @@ bool Scaler::ProcessFrame() {
 }
 
 void Scaler::Cleanup() {
-    // Wait for device to be idle before cleanup
+    // Get Vulkan context once
     auto& vulkan = VulkanContext::Get();
     if (vulkan.GetDevice()) {
         vkDeviceWaitIdle(vulkan.GetDevice());
     }
 
-    // Then cleanup resources in correct order
+    // Cleanup TTF/SDL resources
     if (m_statsSurface) {
         SDL_FreeSurface(m_statsSurface);
         m_statsSurface = nullptr;
@@ -643,10 +643,8 @@ void Scaler::Cleanup() {
     }
     SDL_Quit();
     
-    VulkanContext& vulkan = VulkanContext::Get();
-    auto device = vulkan.GetDevice();
-
-    vkDeviceWaitIdle(device);
+    // Cleanup Vulkan resources
+    auto device = vulkan.GetDevice(); // Use the same vulkan reference
 
     if (m_commandBuffer != VK_NULL_HANDLE) {
         vkFreeCommandBuffers(device, m_commandPool, 1, &m_commandBuffer);
