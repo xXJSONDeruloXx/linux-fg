@@ -9,11 +9,20 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 find_package(Vulkan REQUIRED)
 find_package(X11 REQUIRED)
 find_package(PkgConfig REQUIRED)
-find_package(Wayland REQUIRED)
+
+# Use pkg-config for Wayland instead of find_package
+pkg_check_modules(WAYLAND REQUIRED wayland-client wayland-server wayland-egl wayland-cursor wayland-protocols)
+include_directories(${WAYLAND_INCLUDE_DIRS})
+link_directories(${WAYLAND_LIBRARY_DIRS})
+add_definitions(${WAYLAND_CFLAGS_OTHER})
+
+# Use pkg-config for XCB dependencies
 pkg_check_modules(XCB REQUIRED xcb xcb-shm xcb-composite xcb-xfixes)
+
+# Find SDL2
 find_package(SDL2 REQUIRED)
 
-# Shader compilation
+# Shader compilation function
 find_program(GLSLC glslc REQUIRED)
 function(compile_shader TARGET SHADER)
     get_filename_component(SHADER_NAME ${SHADER} NAME)
@@ -54,6 +63,7 @@ target_include_directories(lossless-scaling PRIVATE
     ${X11_INCLUDE_DIRS}
     ${XCB_INCLUDE_DIRS}
     ${SDL2_INCLUDE_DIRS}
+    ${WAYLAND_INCLUDE_DIRS}
 )
 
 # Link libraries
@@ -61,7 +71,7 @@ target_link_libraries(lossless-scaling PRIVATE
     ${Vulkan_LIBRARIES}
     ${X11_LIBRARIES}
     ${XCB_LIBRARIES}
-    ${SDL2_LIBRARIES}
+    SDL2::SDL2
     ${WAYLAND_LIBRARIES}
     xcb-shm
     X11-xcb
