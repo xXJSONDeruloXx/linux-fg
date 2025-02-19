@@ -456,18 +456,11 @@ bool Scaler::ProcessFrame() {
         }
     }
 
+    // Create frame resources before capture attempt
     if (m_currentFrame.image == VK_NULL_HANDLE) {
         LOG_INFO("Creating current frame buffer");
         if (!FrameManager::Get().CreateFrame(m_currentFrame, m_config.inputWidth, m_config.inputHeight)) {
             LOG_ERROR("Failed to create current frame");
-            return false;
-        }
-    }
-
-    if (m_config.enableInterpolation && m_previousFrame.image == VK_NULL_HANDLE) {
-        LOG_INFO("Creating previous frame buffer");
-        if (!FrameManager::Get().CreateFrame(m_previousFrame, m_config.inputWidth, m_config.inputHeight)) {
-            LOG_ERROR("Failed to create previous frame");
             return false;
         }
     }
@@ -480,6 +473,7 @@ bool Scaler::ProcessFrame() {
         }
     }
 
+    // Then try to capture
     LOG_INFO("Attempting to capture frame...");
     if (!WindowCapture::Get().CaptureFrame(m_currentFrame)) {
         LOG_ERROR("Failed to capture frame");

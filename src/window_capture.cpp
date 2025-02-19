@@ -470,6 +470,12 @@ bool WindowCapture::CaptureWaylandFrame(Frame& frame) {
 }
  
 bool WindowCapture::CopyToStagingBuffer(const void* data, size_t size, Frame& frame) {
+    // Add validation check at start of function
+    if (frame.image == VK_NULL_HANDLE) {
+        LOG_ERROR("Cannot copy to null frame image");
+        return false;
+    }
+
     // Create staging buffer
     VkBuffer stagingBuffer;
     VkDeviceMemory stagingMemory;
