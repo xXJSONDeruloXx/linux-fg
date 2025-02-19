@@ -1,4 +1,0 @@
-# Hashes of file build rules.
-362e542065579a2cdd7122b328c381af shaders/interpolate.comp.spv
-fbabb6d26066a19493613aa3266f3cd3 shaders/motion.comp.spv
-d5e79209d72f06640617af0f4f8d09c7 shaders/scale.comp.spv
