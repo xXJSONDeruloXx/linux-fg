@@ -91,4 +91,11 @@ private:
  
     // Wayland resources
     WaylandContext m_wayland;
+
+    // Add these members
+    std::queue<std::chrono::steady_clock::time_point> m_frameTimings;
+    float m_sourceFps = 0.0f;
+    
+    // Add this method
+    float GetSourceFps() const { return m_sourceFps; }
 };

@@ -583,7 +583,8 @@ bool Scaler::ProcessFrame() {
     // Prepare stats text
     std::stringstream stats;
     stats << std::fixed << std::setprecision(1)
-          << "FPS: " << m_currentFps << "\n"
+          << "Source FPS: " << WindowCapture::Get().GetSourceFps() << "\n"
+          << "Output FPS: " << m_currentFps << "\n"
           << "Input: " << m_config.inputWidth << "x" << m_config.inputHeight << "\n"
           << "Output: " << m_config.outputWidth << "x" << m_config.outputHeight;
 

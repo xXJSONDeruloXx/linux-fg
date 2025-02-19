@@ -330,6 +330,22 @@ bool WindowCapture::GetWindowSize(uint32_t& width, uint32_t& height) {
 }
  
 bool WindowCapture::CaptureFrame(Frame& frame) {
+    // At start of function, track frame timing
+    auto currentTime = std::chrono::steady_clock::now();
+    m_frameTimings.push(currentTime);
+
+    // Keep last 60 frames
+    while (m_frameTimings.size() > 60) {
+        m_frameTimings.pop();
+    }
+
+    // Calculate source FPS
+    if (m_frameTimings.size() > 1) {
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(
+            m_frameTimings.back() - m_frameTimings.front()).count();
+        m_sourceFps = 1000.0f * (m_frameTimings.size() - 1) / duration;
+    }
+
     LOG_INFO("Capturing frame with display server type: ", 
              static_cast<int>(m_displayServer));
     switch (m_displayServer) {
