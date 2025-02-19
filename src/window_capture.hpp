@@ -9,6 +9,8 @@
 #include <sys/shm.h>
 #include "logger.hpp"
 #include "frame_manager.hpp"
+#include <queue>
+#include <chrono>
  
 enum class DisplayServer {
     X11,
@@ -35,6 +37,7 @@ public:
  
     bool CaptureFrame(Frame& frame);
     bool GetWindowSize(uint32_t& width, uint32_t& height);
+    float GetSourceFps() const { return m_sourceFps; }
  
 private:
     WindowCapture() = default;
@@ -95,7 +98,4 @@ private:
     // Add these members
     std::queue<std::chrono::steady_clock::time_point> m_frameTimings;
     float m_sourceFps = 0.0f;
-    
-    // Add this method
-    float GetSourceFps() const { return m_sourceFps; }
 };
