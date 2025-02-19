@@ -17,9 +17,23 @@ bool Scaler::Initialize(const ScalerConfig& config) {
     }
 
     // Load a built-in font (modify path as needed)
-    m_font = TTF_OpenFont("/usr/share/fonts/TTF/DejaVuSans.ttf", 14);
-    if (!m_font) {
-        LOG_ERROR("Failed to load font: ", TTF_GetError());
+    const char* fontPaths[] = {
+        "/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf",
+        "/usr/share/fonts/TTF/DejaVuSans.ttf",
+        "/usr/share/fonts/dejavu/DejaVuSans.ttf"
+    };
+
+    bool fontLoaded = false;
+    for (const auto& path : fontPaths) {
+        m_font = TTF_OpenFont(path, 14);
+        if (m_font) {
+            fontLoaded = true;
+            break;
+        }
+    }
+
+    if (!fontLoaded) {
+        LOG_ERROR("Failed to load any font");
         return false;
     }
 
@@ -604,11 +618,18 @@ bool Scaler::ProcessFrame() {
 }
 
 void Scaler::Cleanup() {
+    // Wait for device to be idle before cleanup
+    auto& vulkan = VulkanContext::Get();
+    if (vulkan.GetDevice()) {
+        vkDeviceWaitIdle(vulkan.GetDevice());
+    }
+
+    // Then cleanup resources in correct order
     if (m_statsSurface) {
         SDL_FreeSurface(m_statsSurface);
         m_statsSurface = nullptr;
     }
-    
+
     if (m_font) {
         TTF_CloseFont(m_font);
         m_font = nullptr;
